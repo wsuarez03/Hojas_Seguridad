@@ -1,4 +1,10 @@
 import {
+  bootstrapCloudAdminIfNeeded,
+  isCloudSyncEnabled,
+  syncCloudToLocalCache,
+  migrateLocalToCloud
+} from '../cloud/dataLayer';
+import {
   createContext,
   useContext,
   useEffect,
@@ -14,6 +20,7 @@ import { normalizeUsername, verifyPassword } from '../utils/auth';
 interface AuthContextValue {
   currentUser: UserRecord | null;
   isReady: boolean;
+  isCloudMode: boolean;
   login: (username: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   logout: () => void;
   refreshCurrentUser: () => Promise<void>;
@@ -25,10 +32,23 @@ const SESSION_KEY = 'safety-sheets-session-user-id';
 export function AuthProvider({ children }: PropsWithChildren) {
   const [currentUser, setCurrentUser] = useState<UserRecord | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const cloudMode = isCloudSyncEnabled();
 
   useEffect(() => {
     async function initialize(): Promise<void> {
-      await seedDatabase();
+      if (cloudMode) {
+        try {
+          await bootstrapCloudAdminIfNeeded();
+          await migrateLocalToCloud();
+          await syncCloudToLocalCache();
+        } catch (error) {
+          console.warn(error);
+          await seedDatabase();
+        }
+      } else {
+        await seedDatabase();
+      }
+
       const userId = sessionStorage.getItem(SESSION_KEY);
 
       if (userId) {
@@ -40,13 +60,30 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     void initialize();
-  }, []);
+  }, [cloudMode]);
+
+  useEffect(() => {
+    if (!cloudMode) {
+      return;
+    }
+
+    const timerId = window.setInterval(() => {
+      void syncCloudToLocalCache().catch((error) => console.warn(error));
+    }, 60_000);
+
+    return () => window.clearInterval(timerId);
+  }, [cloudMode]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       currentUser,
       isReady,
+      isCloudMode: cloudMode,
       login: async (username, password) => {
+        if (cloudMode) {
+          await syncCloudToLocalCache().catch(() => undefined);
+        }
+
         const normalized = normalizeUsername(username);
         const user = await db.users.where('username').equals(normalized).first();
 
@@ -85,7 +122,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setCurrentUser(user ?? null);
       }
     }),
-    [currentUser, isReady]
+    [cloudMode, currentUser, isReady]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

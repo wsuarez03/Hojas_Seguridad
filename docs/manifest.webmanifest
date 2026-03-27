@@ -1,0 +1,1 @@
+{"name":"Hojas de Seguridad","short_name":"HDS","description":"Consulta y gestion offline de hojas de seguridad.","start_url":"./","display":"standalone","background_color":"#f3efe6","theme_color":"#123458","lang":"en","scope":"./","icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}]}

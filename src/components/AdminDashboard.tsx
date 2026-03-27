@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { deleteSheetInDataLayer } from '../cloud/dataLayer';
 import { db } from '../db/appDb';
 import { useAuth } from '../hooks/useAuth';
 import { UploadPanel } from './UploadPanel';
@@ -8,7 +9,7 @@ import { daysUntilExpiration, formatBytes, formatDisplayDate, getSheetStatus, ge
 import { downloadBlob, openBlobInNewTab } from '../utils/files';
 
 export function AdminDashboard() {
-  const { currentUser, logout, refreshCurrentUser } = useAuth();
+  const { currentUser, isCloudMode, logout, refreshCurrentUser } = useAuth();
   const sheets = useLiveQuery(async () => sortByExpiration(await db.sheets.toArray()), [], []);
   const users = useLiveQuery(async () => db.users.toArray(), [], []);
 
@@ -25,7 +26,7 @@ export function AdminDashboard() {
       return;
     }
 
-    await db.sheets.delete(sheetId);
+    await deleteSheetInDataLayer(sheetId);
   }
 
   return (
@@ -45,6 +46,9 @@ export function AdminDashboard() {
           </p>
           <p>
             Rol: <strong>{currentUser.role === 'admin' ? 'Administrador' : 'Cargue'}</strong>
+          </p>
+          <p>
+            Modo de datos: <strong>{isCloudMode ? 'Centralizado' : 'Solo local'}</strong>
           </p>
           <div className="stacked-actions">
             <Link className="secondary-button link-button" to="/">

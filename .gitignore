@@ -3,3 +3,6 @@ dist
 .DS_Store
 coverage
 dev-dist
+.env
+.env.*
+!.env.example

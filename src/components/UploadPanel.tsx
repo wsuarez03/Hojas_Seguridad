@@ -1,5 +1,5 @@
 import { ChangeEvent, useMemo, useState } from 'react';
-import { db } from '../db/appDb';
+import { saveUploadsInDataLayer } from '../cloud/dataLayer';
 import type { PendingUpload, UserRecord } from '../types';
 import {
   SHEET_VALIDITY_YEARS,
@@ -73,30 +73,15 @@ export function UploadPanel({ currentUser }: UploadPanelProps) {
 
     setIsSaving(true);
     setError('');
-    const now = new Date().toISOString();
+    try {
+      const savedCount = await saveUploadsInDataLayer(pendingUploads, currentUser);
+      setPendingUploads([]);
+      setMessage(`Se almacenaron ${savedCount} hoja(s) de seguridad.`);
+    } catch (exception) {
+      const details = exception instanceof Error ? exception.message : 'Error desconocido.';
+      setError(details);
+    }
 
-    await db.sheets.bulkAdd(
-      pendingUploads.map((item) => ({
-        id: crypto.randomUUID(),
-        productName: item.productName.trim(),
-        manufacturer: item.manufacturer.trim(),
-        area: item.area.trim(),
-        notes: item.notes.trim(),
-        documentDate: item.documentDate,
-        expirationDate: calculateExpirationFromDocumentDate(item.documentDate),
-        uploadDate: now,
-        uploadedById: currentUser.id,
-        uploadedByName: currentUser.fullName,
-        fileName: item.file.name,
-        pdfBlob: item.file,
-        pdfSize: item.file.size,
-        createdAt: now,
-        updatedAt: now
-      }))
-    );
-
-    setPendingUploads([]);
-    setMessage(`Se almacenaron ${pendingUploads.length} hoja(s) de seguridad.`);
     setIsSaving(false);
   }
 

@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { db } from '../db/appDb';
+import { createUserInDataLayer, deleteUserInDataLayer } from '../cloud/dataLayer';
 import type { UserRecord, UserRole } from '../types';
 import { hashPassword, normalizeUsername } from '../utils/auth';
 
@@ -37,14 +38,19 @@ export function UserManagement({ currentUser, users, onUsersChanged }: UserManag
 
     const now = new Date().toISOString();
 
-    await db.users.add({
-      id: crypto.randomUUID(),
-      fullName: fullName.trim(),
-      username: normalizedUsername,
-      passwordHash: await hashPassword(normalizedUsername, password),
-      role,
-      createdAt: now
-    });
+    try {
+      await createUserInDataLayer({
+        fullName: fullName.trim(),
+        username: normalizedUsername,
+        passwordHash: await hashPassword(normalizedUsername, password),
+        role
+      });
+    } catch (exception) {
+      const details = exception instanceof Error ? exception.message : 'Error desconocido.';
+      setError(details);
+      setIsSaving(false);
+      return;
+    }
 
     setFullName('');
     setUsername('');
@@ -72,7 +78,13 @@ export function UserManagement({ currentUser, users, onUsersChanged }: UserManag
       return;
     }
 
-    await db.users.delete(user.id);
+    try {
+      await deleteUserInDataLayer(user.id);
+    } catch (exception) {
+      const details = exception instanceof Error ? exception.message : 'Error desconocido.';
+      setError(details);
+      return;
+    }
     setMessage('Usuario eliminado.');
     setError('');
     await onUsersChanged();

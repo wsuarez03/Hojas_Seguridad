@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/appDb';
+import { useAuth } from '../hooks/useAuth';
 import {
   ALERT_WINDOW_DAYS,
   daysUntilExpiration,
@@ -30,6 +31,7 @@ function getNotificationBody(productNames: string[], total: number): string {
 }
 
 export function PublicDashboard({ onOpenLogin }: PublicDashboardProps) {
+  const { isCloudMode } = useAuth();
   const sheets = useLiveQuery(async () => sortByExpiration(await db.sheets.toArray()), [], []);
   const [searchValue, setSearchValue] = useState('');
   const [statusFilter, setStatusFilter] = useState<FilterValue>('todos');
@@ -147,6 +149,9 @@ export function PublicDashboard({ onOpenLogin }: PublicDashboardProps) {
           </p>
           <p>
             Notificaciones: <strong>{notificationPermission}</strong>
+          </p>
+          <p>
+            Datos: <strong>{isCloudMode ? 'Sincronizados en nube' : 'Guardados solo en este equipo'}</strong>
           </p>
         </div>
       </section>
