@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useState } from 'react';
 import { deleteSheetInDataLayer } from '../cloud/dataLayer';
 import { db } from '../db/appDb';
 import { useAuth } from '../hooks/useAuth';
@@ -12,6 +13,7 @@ export function AdminDashboard() {
   const { currentUser, isCloudMode, logout, refreshCurrentUser } = useAuth();
   const sheets = useLiveQuery(async () => sortByExpiration(await db.sheets.toArray()), [], []);
   const users = useLiveQuery(async () => db.users.toArray(), [], []);
+  const [expandedSheetIds, setExpandedSheetIds] = useState<Record<string, boolean>>({});
 
   if (!currentUser) {
     return <></>;
@@ -27,6 +29,13 @@ export function AdminDashboard() {
     }
 
     await deleteSheetInDataLayer(sheetId);
+  }
+
+  function toggleSheetDetails(sheetId: string): void {
+    setExpandedSheetIds((previous) => ({
+      ...previous,
+      [sheetId]: !previous[sheetId]
+    }));
   }
 
   return (
@@ -108,6 +117,7 @@ export function AdminDashboard() {
           <div className="sheet-grid compact-grid">
             {sheets.map((sheet) => {
               const status = getSheetStatus(sheet.expirationDate);
+              const isExpanded = Boolean(expandedSheetIds[sheet.id]);
 
               return (
                 <article className="sheet-card" key={sheet.id}>
@@ -119,29 +129,6 @@ export function AdminDashboard() {
                     <span className={`status-chip ${status}`}>{getStatusLabel(status)}</span>
                   </div>
 
-                  <dl className="detail-list">
-                    <div>
-                      <dt>Fecha documento</dt>
-                      <dd>{formatDisplayDate(sheet.documentDate)}</dd>
-                    </div>
-                    <div>
-                      <dt>Vencimiento calculado</dt>
-                      <dd>{formatDisplayDate(sheet.expirationDate)}</dd>
-                    </div>
-                    <div>
-                      <dt>Archivo</dt>
-                      <dd>{sheet.fileName}</dd>
-                    </div>
-                    <div>
-                      <dt>Tamano</dt>
-                      <dd>{formatBytes(sheet.pdfSize)}</dd>
-                    </div>
-                    <div>
-                      <dt>Cargado por</dt>
-                      <dd>{sheet.uploadedByName}</dd>
-                    </div>
-                  </dl>
-
                   <div className="actions-row">
                     <button className="primary-button" type="button" onClick={() => openBlobInNewTab(sheet.pdfBlob)}>
                       Ver PDF
@@ -149,12 +136,40 @@ export function AdminDashboard() {
                     <button className="ghost-button" type="button" onClick={() => downloadBlob(sheet.pdfBlob, sheet.fileName)}>
                       Descargar
                     </button>
+                    <button className="secondary-button" type="button" onClick={() => toggleSheetDetails(sheet.id)}>
+                      {isExpanded ? 'Ver menos' : 'Ver mas'}
+                    </button>
                     {currentUser.role === 'admin' ? (
                       <button className="danger-button" type="button" onClick={() => void deleteSheet(sheet.id)}>
                         Eliminar
                       </button>
                     ) : null}
                   </div>
+
+                  {isExpanded ? (
+                    <dl className="detail-list">
+                      <div>
+                        <dt>Fecha documento</dt>
+                        <dd>{formatDisplayDate(sheet.documentDate)}</dd>
+                      </div>
+                      <div>
+                        <dt>Vencimiento calculado</dt>
+                        <dd>{formatDisplayDate(sheet.expirationDate)}</dd>
+                      </div>
+                      <div>
+                        <dt>Archivo</dt>
+                        <dd>{sheet.fileName}</dd>
+                      </div>
+                      <div>
+                        <dt>Tamano</dt>
+                        <dd>{formatBytes(sheet.pdfSize)}</dd>
+                      </div>
+                      <div>
+                        <dt>Cargado por</dt>
+                        <dd>{sheet.uploadedByName}</dd>
+                      </div>
+                    </dl>
+                  ) : null}
                 </article>
               );
             })}

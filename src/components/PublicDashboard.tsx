@@ -35,8 +35,16 @@ export function PublicDashboard({ onOpenLogin }: PublicDashboardProps) {
   const sheets = useLiveQuery(async () => sortByExpiration(await db.sheets.toArray()), [], []);
   const [searchValue, setSearchValue] = useState('');
   const [statusFilter, setStatusFilter] = useState<FilterValue>('todos');
+  const [expandedSheetIds, setExpandedSheetIds] = useState<Record<string, boolean>>({});
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
+
+  function toggleSheetDetails(sheetId: string): void {
+    setExpandedSheetIds((previous) => ({
+      ...previous,
+      [sheetId]: !previous[sheetId]
+    }));
+  }
 
   useEffect(() => {
     function updateStatus(): void {
@@ -238,6 +246,7 @@ export function PublicDashboard({ onOpenLogin }: PublicDashboardProps) {
           <div className="sheet-grid">
             {filteredSheets.map((sheet) => {
               const status = getSheetStatus(sheet.expirationDate);
+              const isExpanded = Boolean(expandedSheetIds[sheet.id]);
 
               return (
                 <article className="sheet-card" key={sheet.id}>
@@ -249,31 +258,6 @@ export function PublicDashboard({ onOpenLogin }: PublicDashboardProps) {
                     <span className={`status-chip ${status}`}>{getStatusLabel(status)}</span>
                   </div>
 
-                  <dl className="detail-list">
-                    <div>
-                      <dt>Area</dt>
-                      <dd>{sheet.area || 'No definida'}</dd>
-                    </div>
-                    <div>
-                      <dt>Fecha documento</dt>
-                      <dd>{formatDisplayDate(sheet.documentDate)}</dd>
-                    </div>
-                    <div>
-                      <dt>Vencimiento calculado</dt>
-                      <dd>{formatDisplayDate(sheet.expirationDate)}</dd>
-                    </div>
-                    <div>
-                      <dt>Cargado por</dt>
-                      <dd>{sheet.uploadedByName}</dd>
-                    </div>
-                    <div>
-                      <dt>Tamano</dt>
-                      <dd>{formatBytes(sheet.pdfSize)}</dd>
-                    </div>
-                  </dl>
-
-                  {sheet.notes ? <p className="notes-box">{sheet.notes}</p> : null}
-
                   <div className="actions-row">
                     <button className="primary-button" type="button" onClick={() => openBlobInNewTab(sheet.pdfBlob)}>
                       Ver PDF
@@ -281,7 +265,39 @@ export function PublicDashboard({ onOpenLogin }: PublicDashboardProps) {
                     <button className="ghost-button" type="button" onClick={() => downloadBlob(sheet.pdfBlob, sheet.fileName)}>
                       Descargar
                     </button>
+                    <button className="secondary-button" type="button" onClick={() => toggleSheetDetails(sheet.id)}>
+                      {isExpanded ? 'Ver menos' : 'Ver mas'}
+                    </button>
                   </div>
+
+                  {isExpanded ? (
+                    <>
+                      <dl className="detail-list">
+                        <div>
+                          <dt>Area</dt>
+                          <dd>{sheet.area || 'No definida'}</dd>
+                        </div>
+                        <div>
+                          <dt>Fecha documento</dt>
+                          <dd>{formatDisplayDate(sheet.documentDate)}</dd>
+                        </div>
+                        <div>
+                          <dt>Vencimiento calculado</dt>
+                          <dd>{formatDisplayDate(sheet.expirationDate)}</dd>
+                        </div>
+                        <div>
+                          <dt>Cargado por</dt>
+                          <dd>{sheet.uploadedByName}</dd>
+                        </div>
+                        <div>
+                          <dt>Tamano</dt>
+                          <dd>{formatBytes(sheet.pdfSize)}</dd>
+                        </div>
+                      </dl>
+
+                      {sheet.notes ? <p className="notes-box">{sheet.notes}</p> : null}
+                    </>
+                  ) : null}
                 </article>
               );
             })}
