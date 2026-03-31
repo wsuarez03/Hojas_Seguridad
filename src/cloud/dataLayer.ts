@@ -324,17 +324,18 @@ export async function saveUploadsInDataLayer(
     updatedAt: now
   }));
 
+  await db.sheets.bulkPut(sheets);
+
   if (isCloudSyncEnabled()) {
     const cloud = ensureCloudClient();
     const cloudRows = await Promise.all(sheets.map((sheet) => sheetToCloud(sheet)));
     const { error } = await cloud.from(SHEETS_TABLE).upsert(cloudRows, { onConflict: 'id' });
 
     if (error) {
-      throw new Error(`No fue posible guardar hojas en la nube: ${error.message}`);
+      console.error(`No fue posible guardar hojas en la nube: ${error.message}`);
     }
   }
 
-  await db.sheets.bulkPut(sheets);
   return sheets.length;
 }
 

@@ -32,13 +32,35 @@ export function UploadPanel({ currentUser }: UploadPanelProps) {
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const hasInvalidRows = useMemo(
+  const invalidUploads = useMemo(
     () =>
-      pendingUploads.some(
-        (item) => !item.productName.trim() || !item.documentDate || !isValidDateInput(item.documentDate)
-      ),
+      pendingUploads
+        .map((item, index) => {
+          const reasons: string[] = [];
+
+          if (!item.productName.trim()) {
+            reasons.push('producto');
+          }
+
+          if (!item.documentDate) {
+            reasons.push('fecha del documento');
+          } else if (!isValidDateInput(item.documentDate)) {
+            reasons.push('fecha del documento valida');
+          }
+
+          return reasons.length > 0
+            ? {
+                index,
+                fileName: item.file.name,
+                reasons
+              }
+            : null;
+        })
+        .filter((item): item is { index: number; fileName: string; reasons: string[] } => item !== null),
     [pendingUploads]
   );
+
+  const hasInvalidRows = invalidUploads.length > 0;
 
   function handleFilesSelected(event: ChangeEvent<HTMLInputElement>): void {
     const nextFiles = Array.from(event.target.files ?? []).filter(
@@ -66,8 +88,20 @@ export function UploadPanel({ currentUser }: UploadPanelProps) {
   }
 
   async function saveUploads(): Promise<void> {
-    if (pendingUploads.length === 0 || hasInvalidRows) {
-      setError('Revise que todas las hojas tengan producto y fecha del documento valida.');
+    if (pendingUploads.length === 0) {
+      setError('No hay archivos pendientes por guardar.');
+      return;
+    }
+
+    if (hasInvalidRows) {
+      const examples = invalidUploads
+        .slice(0, 3)
+        .map((item) => `${item.index + 1}. ${item.fileName}: ${item.reasons.join(', ')}`)
+        .join(' | ');
+      const extraCount = invalidUploads.length - 3;
+      const extraMessage = extraCount > 0 ? ` | y ${extraCount} registro(s) mas.` : '';
+
+      setError(`Complete los campos obligatorios antes de guardar. ${examples}${extraMessage}`);
       return;
     }
 
@@ -80,9 +114,9 @@ export function UploadPanel({ currentUser }: UploadPanelProps) {
     } catch (exception) {
       const details = exception instanceof Error ? exception.message : 'Error desconocido.';
       setError(details);
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsSaving(false);
   }
 
   return (
@@ -109,8 +143,15 @@ export function UploadPanel({ currentUser }: UploadPanelProps) {
         <div className="empty-state compact-empty">No hay archivos pendientes de carga.</div>
       ) : (
         <div className="pending-grid">
-          {pendingUploads.map((item) => (
-            <article className="pending-card" key={item.tempId}>
+          {pendingUploads.map((item) => {
+            const missingProduct = !item.productName.trim();
+            const invalidDocumentDate = !item.documentDate || !isValidDateInput(item.documentDate);
+
+            return (
+            <article
+              className={`pending-card${missingProduct || invalidDocumentDate ? ' pending-card-invalid' : ''}`}
+              key={item.tempId}
+            >
               <div className="pending-topline">
                 <strong>{item.file.name}</strong>
                 <button className="ghost-button" type="button" onClick={() => removePendingUpload(item.tempId)}>
@@ -124,6 +165,7 @@ export function UploadPanel({ currentUser }: UploadPanelProps) {
                   <input
                     value={item.productName}
                     onChange={(event) => updatePendingUpload(item.tempId, 'productName', event.target.value)}
+                    aria-invalid={missingProduct}
                     required
                   />
                 </label>
@@ -150,10 +192,19 @@ export function UploadPanel({ currentUser }: UploadPanelProps) {
                     type="date"
                     value={item.documentDate}
                     onChange={(event) => updatePendingUpload(item.tempId, 'documentDate', event.target.value)}
+                    aria-invalid={invalidDocumentDate}
                     required
                   />
                 </label>
               </div>
+
+              {missingProduct || invalidDocumentDate ? (
+                <p className="form-error">
+                  {missingProduct ? 'Complete el producto.' : ''}
+                  {missingProduct && invalidDocumentDate ? ' ' : ''}
+                  {invalidDocumentDate ? 'Ingrese una fecha del documento valida.' : ''}
+                </p>
+              ) : null}
 
               {item.documentDate && isValidDateInput(item.documentDate) ? (() => {
                 const projectedExpiration = calculateExpirationFromDocumentDate(item.documentDate);
@@ -178,7 +229,8 @@ export function UploadPanel({ currentUser }: UploadPanelProps) {
                 />
               </label>
             </article>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -186,7 +238,7 @@ export function UploadPanel({ currentUser }: UploadPanelProps) {
         <button
           className="primary-button"
           type="button"
-          disabled={pendingUploads.length === 0 || hasInvalidRows || isSaving}
+          disabled={pendingUploads.length === 0 || isSaving}
           onClick={() => void saveUploads()}
         >
           {isSaving ? 'Guardando...' : 'Guardar carga'}

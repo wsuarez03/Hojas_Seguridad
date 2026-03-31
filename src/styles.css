@@ -312,6 +312,11 @@ textarea {
   border: 1px solid var(--line);
 }
 
+.pending-card-invalid {
+  border-color: rgba(178, 69, 47, 0.35);
+  background: linear-gradient(180deg, rgba(178, 69, 47, 0.06), rgba(255, 255, 255, 0.82));
+}
+
 .sheet-card h3,
 .pending-card strong,
 .alert-card strong {
