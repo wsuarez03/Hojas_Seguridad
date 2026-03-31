@@ -1,4 +1,4 @@
-const encoder = new TextEncoder();
+import { hashSha256Hex } from './platform';
 
 export function normalizeUsername(username: string): string {
   return username.trim().toLowerCase();
@@ -6,10 +6,7 @@ export function normalizeUsername(username: string): string {
 
 export async function hashPassword(username: string, password: string): Promise<string> {
   const payload = `${normalizeUsername(username)}::${password}`;
-  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(payload));
-  return Array.from(new Uint8Array(digest))
-    .map((value) => value.toString(16).padStart(2, '0'))
-    .join('');
+  return hashSha256Hex(payload);
 }
 
 export async function verifyPassword(

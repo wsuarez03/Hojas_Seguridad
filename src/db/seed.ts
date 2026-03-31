@@ -1,5 +1,6 @@
 import { db } from './appDb';
 import { hashPassword, normalizeUsername } from '../utils/auth';
+import { createId } from '../utils/platform';
 
 export const defaultAdminCredentials = {
   username: 'admin',
@@ -16,7 +17,7 @@ export async function seedDatabase(): Promise<void> {
   const now = new Date().toISOString();
 
   await db.users.add({
-    id: crypto.randomUUID(),
+    id: createId(),
     fullName: 'Administrador principal',
     username: normalizeUsername(defaultAdminCredentials.username),
     passwordHash: await hashPassword(defaultAdminCredentials.username, defaultAdminCredentials.password),

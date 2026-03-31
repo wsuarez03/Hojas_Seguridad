@@ -4,6 +4,7 @@ import { defaultAdminCredentials } from '../db/seed';
 import type { PendingUpload, SafetySheetRecord, UserRecord, UserRole } from '../types';
 import { hashPassword, normalizeUsername } from '../utils/auth';
 import { calculateExpirationFromDocumentDate } from '../utils/date';
+import { createId } from '../utils/platform';
 
 interface CloudUserRow {
   id: string;
@@ -192,7 +193,7 @@ export async function bootstrapCloudAdminIfNeeded(): Promise<void> {
   const now = new Date().toISOString();
   const username = normalizeUsername(defaultAdminCredentials.username);
   const admin: UserRecord = {
-    id: crypto.randomUUID(),
+    id: createId(),
     fullName: 'Administrador principal',
     username,
     passwordHash: await hashPassword(username, defaultAdminCredentials.password),
@@ -267,7 +268,7 @@ export async function createUserInDataLayer(payload: {
   role: UserRole;
 }): Promise<UserRecord> {
   const user: UserRecord = {
-    id: crypto.randomUUID(),
+    id: createId(),
     fullName: payload.fullName,
     username: normalizeUsername(payload.username),
     passwordHash: payload.passwordHash,
@@ -307,7 +308,7 @@ export async function saveUploadsInDataLayer(
 ): Promise<number> {
   const now = new Date().toISOString();
   const sheets: SafetySheetRecord[] = pendingUploads.map((item) => ({
-    id: crypto.randomUUID(),
+    id: createId(),
     productName: item.productName.trim(),
     manufacturer: item.manufacturer.trim(),
     area: item.area.trim(),

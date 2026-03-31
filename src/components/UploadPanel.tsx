@@ -9,6 +9,7 @@ import {
   getStatusLabel,
   isValidDateInput
 } from '../utils/date';
+import { createId } from '../utils/platform';
 
 interface UploadPanelProps {
   currentUser: UserRecord;
@@ -16,7 +17,7 @@ interface UploadPanelProps {
 
 function createPendingUpload(file: File): PendingUpload {
   return {
-    tempId: crypto.randomUUID(),
+    tempId: createId(),
     file,
     productName: file.name.replace(/\.pdf$/i, ''),
     manufacturer: '',
