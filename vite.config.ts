@@ -5,6 +5,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   // Relative base avoids broken /assets paths on GitHub Pages project URLs.
   base: './',
+  build: {
+    outDir: 'docs'
+  },
   plugins: [
     react(),
     VitePWA({
