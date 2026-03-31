@@ -37,7 +37,10 @@ export function PublicDashboard({ onOpenLogin }: PublicDashboardProps) {
   const [statusFilter, setStatusFilter] = useState<FilterValue>('todos');
   const [expandedSheetIds, setExpandedSheetIds] = useState<Record<string, boolean>>({});
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
+  const notificationsSupported = typeof Notification !== 'undefined';
+  const [notificationPermission, setNotificationPermission] = useState(
+    notificationsSupported ? Notification.permission : 'denied'
+  );
 
   function toggleSheetDetails(sheetId: string): void {
     setExpandedSheetIds((previous) => ({
@@ -117,16 +120,21 @@ export function PublicDashboard({ onOpenLogin }: PublicDashboardProps) {
       return;
     }
 
-    new Notification('Alertas de vencimiento', {
-      body: getNotificationBody(
-        sheetsToAlert.map((sheet) => sheet.productName),
-        pendingAlerts
-      )
-    });
+    if (notificationsSupported) {
+      new Notification('Alertas de vencimiento', {
+        body: getNotificationBody(
+          sheetsToAlert.map((sheet) => sheet.productName),
+          pendingAlerts
+        )
+      });
+    }
     localStorage.setItem(notificationKey, signature);
-  }, [notificationPermission, sheets]);
+  }, [notificationPermission, notificationsSupported, sheets]);
 
   async function requestNotifications(): Promise<void> {
+    if (!notificationsSupported) {
+      return;
+    }
     const permission = await Notification.requestPermission();
     setNotificationPermission(permission);
   }
@@ -144,9 +152,11 @@ export function PublicDashboard({ onOpenLogin }: PublicDashboardProps) {
             <button className="primary-button" type="button" onClick={onOpenLogin}>
               Login administrador
             </button>
-            <button className="secondary-button" type="button" onClick={() => void requestNotifications()}>
-              Activar alertas del navegador
-            </button>
+            {notificationsSupported ? (
+              <button className="secondary-button" type="button" onClick={() => void requestNotifications()}>
+                Activar alertas del navegador
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -155,9 +165,11 @@ export function PublicDashboard({ onOpenLogin }: PublicDashboardProps) {
           <p>
             Ventana de alerta: <strong>{ALERT_WINDOW_DAYS} dias</strong>
           </p>
-          <p>
-            Notificaciones: <strong>{notificationPermission}</strong>
-          </p>
+          {notificationsSupported ? (
+            <p>
+              Notificaciones: <strong>{notificationPermission}</strong>
+            </p>
+          ) : null}
           <p>
             Datos: <strong>{isCloudMode ? 'Sincronizados en nube' : 'Guardados solo en este equipo'}</strong>
           </p>
